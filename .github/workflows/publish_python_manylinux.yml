@@ -69,7 +69,11 @@ jobs:
             sqlite-devel \
             graphviz-devel \
             patchelf
-
+      - name: Check Boost
+        run: |
+          rpm -qa | grep -i boost || true
+          find /usr -name "BoostConfig.cmake" -o -name "FindBoost.cmake" | head -50
+          find /usr -name "boost" -type d | head -20 
       - name: Install Python build dependencies
         run: |
           python -m pip install -U pip build wheel scikit-build-core ninja cmake auditwheel
