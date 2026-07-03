@@ -161,19 +161,3 @@ jobs:
           print("Critical points:", out.GetNumberOfPoints())
           print("OK")
           PY
-
-  publish:
-    needs: test
-    if: ${{ inputs.dry_publish == false }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/download-artifact@v7
-        with:
-          pattern: topologytoolkit-*
-          merge-multiple: true
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.TWINE_PYPI_PWD }}
