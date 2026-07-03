@@ -48,7 +48,7 @@ jobs:
       - name: Install system dependencies
         run: |
           dnf update -y
-          dnf install a-y \
+          dnf install -y \
             git \
             curl \
             xz \
