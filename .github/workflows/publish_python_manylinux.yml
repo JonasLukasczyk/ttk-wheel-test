@@ -46,7 +46,7 @@ jobs:
         run: |
           sed -i \
             's/find_package(Boost REQUIRED CONFIG)/find_package(Boost REQUIRED)/' \
-             /src/ttk/CMake/config.cmake
+            /src/ttk/CMake/config.cmake
 
           sed -i \
               '/#include <unordered_map>/a #include <boost/functional/hash.hpp>' \
