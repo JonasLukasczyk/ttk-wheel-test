@@ -42,6 +42,15 @@ jobs:
           git clone --depth 1 --branch dev https://github.com/topology-tool-kit/ttk.git /src/ttk
           cp pyproject.toml /src/ttk/pyproject.toml
 
+      - name: Patch Boost lookup
+        run: |
+          sed -i \
+           's/find_package(Boost REQUIRED CONFIG)/find_package(Boost REQUIRED)/' \
+          /src/ttk/CMake/config.cmake
+
+          echo "Patched Boost lookup:"
+          grep -n "find_package(Boost" /src/ttk/CMake/config.cmake
+
       - name: Fix dubious ownership
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
