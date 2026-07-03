@@ -48,7 +48,7 @@ jobs:
       - name: Install system dependencies
         run: |
           dnf update -y
-          dnf install -y \
+          dnf install a-y \
             git \
             curl \
             xz \
@@ -62,10 +62,6 @@ jobs:
             boost-devel \
             eigen3-devel \
             sqlite-devel \
-            tbb-devel \
-            zlib-devel \
-            zstd-devel \
-            qhull-devel \
             graphviz-devel \
             patchelf
 
