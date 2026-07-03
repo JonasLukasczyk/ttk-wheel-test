@@ -42,6 +42,20 @@ jobs:
           git clone --depth 1 --branch dev https://github.com/topology-tool-kit/ttk.git /src/ttk
           cp pyproject.toml /src/ttk/pyproject.toml
 
+      - name: Patch Boost lookup and boost hash include
+        run: |
+          sed -i \
+            's/find_package(Boost REQUIRED CONFIG)/find_package(Boost REQUIRED)/' \
+             /src/ttk/CMake/config.cmake
+
+          sed -i \
+              '/#include <unordered_map>/a #include <boost/functional/hash.hpp>' \
+              /src/ttk/core/base/ripsPersistenceDiagram/PairCellsWithOracle.h
+
+          grep -n "find_package(Boost" /src/ttk/CMake/config.cmake
+          grep -n "boost/functional/hash" /src/ttk/core/base/ripsPersistenceDiagram/PairCellsWithOracle.h
+
+
       - name: Patch Boost lookup
         run: |
           sed -i \
