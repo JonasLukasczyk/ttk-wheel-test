@@ -1,0 +1,38 @@
+[build-system]
+requires = [
+  "scikit-build-core>=0.10",
+  "cmake>=3.24",
+  "ninja",
+  "wheel",
+  "vtk-sdk-python-wheel-helper"
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "topologytoolkit"
+version = "1.3.0"
+description = "Python bindings for the Topology ToolKit"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "vtk==9.5.2"
+]
+
+[tool.scikit-build]
+wheel.install-dir = "."
+
+[tool.scikit-build.cmake.define]
+CMAKE_INSTALL_RPATH = "$ORIGIN/../lib;$ORIGIN"
+CMAKE_BUILD_WITH_INSTALL_RPATH = "ON"
+CMAKE_INSTALL_RPATH_USE_LINK_PATH = "ON"
+VTK_DIR = "/opt/vtk-wheel-sdk/vtk-9.5.2.data/headers/cmake"
+CMAKE_CXX_FLAGS = "-D_GLIBCXX_USE_CXX11_ABI=0"
+TTK_BUILD_PARAVIEW_PLUGINS = "OFF"
+TTK_BUILD_VTK_WRAPPERS = "ON"
+TTK_BUILD_VTK_PYTHON_MODULE = "ON"
+TTK_BUILD_STANDALONE_APPS = "OFF"
+TTK_BUILD_DOCUMENTATION = "OFF"
+TTK_ENABLE_MPI = "OFF"
+TTK_ENABLE_CPU_OPTIMIZATION = "OFF"
+VTK_MODULE_ENABLE_ttkWRLExporter = "NO" 
+VTK_MODULE_ENABLE_ttkReebSpace = "NO"

@@ -1,0 +1,13 @@
+python -m venv /test
+source /test/bin/activate
+pip install /dist/*.whl
+
+python - <<'PY'
+import vtk
+from topologytoolkit import ttkAlgorithm
+print(ttkAlgorithm)
+import topologytoolkit
+print(vtk.vtkVersion.GetVTKVersion())
+print(topologytoolkit)
+PY
+

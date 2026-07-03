@@ -1,0 +1,183 @@
+name: publish_python_manylinux
+
+on:
+  workflow_call:
+    inputs:
+      dry_publish:
+        description: "Dry publish (no upload)"
+        type: boolean
+        required: false
+        default: true
+
+  workflow_dispatch:
+    inputs:
+      dry_publish:
+        description: "Dry publish (no upload)"
+        type: boolean
+        required: false
+        default: true
+
+env:
+  VTK_VERSION: "9.5.2"
+  PYTAG: "cp312-cp312"
+  CMAKE_BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: quay.io/pypa/${{ matrix.image }}
+
+    strategy:
+      matrix:
+        python: ["cp312-cp312"]
+        image: ["manylinux_2_28_x86_64"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Fix dubious ownership
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Register Python
+        run: |
+          echo "/opt/python/${{ matrix.python }}/bin" >> "$GITHUB_PATH"
+
+      - name: Install system dependencies
+        run: |
+          dnf update -y
+          dnf install -y \
+            git \
+            curl \
+            xz \
+            tar \
+            gcc \
+            gcc-c++ \
+            make \
+            cmake \
+            ninja-build \
+            pkgconfig \
+            boost-devel \
+            eigen3-devel \
+            sqlite-devel \
+            tbb-devel \
+            zlib-devel \
+            zstd-devel \
+            qhull-devel \
+            graphviz-devel \
+            patchelf
+
+      - name: Install Python build dependencies
+        run: |
+          python -m pip install -U pip build wheel scikit-build-core ninja cmake auditwheel
+
+      - name: Download VTK wheel SDK
+        run: |
+          export SDK_URL="https://vtk.org/files/wheel-sdks/vtk-wheel-sdk-${VTK_VERSION}-${{ matrix.python }}-manylinux2014_x86_64.manylinux_2_17_x86_64.tar.xz"
+
+          mkdir -p /opt/vtk-wheel-sdk
+          curl -L "$SDK_URL" -o /tmp/vtk-wheel-sdk.tar.xz
+          tar -xJf /tmp/vtk-wheel-sdk.tar.xz -C /opt/vtk-wheel-sdk --strip-components=1
+          rm /tmp/vtk-wheel-sdk.tar.xz
+
+          find /opt/vtk-wheel-sdk -name "vtk-config.cmake" -print
+
+      - name: Build wheel
+        env:
+          VTK_DIR: /opt/vtk-wheel-sdk/vtk-9.5.2.data/headers/cmake
+          CMAKE_PREFIX_PATH: /opt/vtk-wheel-sdk/vtk-9.5.2.data/headers/cmake
+        run: |
+          python -m build -w
+
+      - name: Inspect wheel
+        run: |
+          python -m zipfile -l dist/*.whl | grep "topologytoolkit" | head -50 || true
+
+      - name: Repair wheel
+        run: |
+          mkdir -p /tmp/wheel wheelhouse
+          python -m zipfile -e dist/*.whl /tmp/wheel
+
+          LD_LIBRARY_PATH=/tmp/wheel/lib:$LD_LIBRARY_PATH \
+            auditwheel repair \
+              --exclude "libvtk*.so*" \
+              --exclude "libvtk*.so.*" \
+              dist/*.whl \
+              -w wheelhouse
+
+          auditwheel show wheelhouse/*.whl
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: topologytoolkit-${{ matrix.image }}-${{ matrix.python }}
+          path: wheelhouse/*.whl
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    container:
+      image: quay.io/pypa/${{ matrix.image }}
+
+    strategy:
+      matrix:
+        python: ["cp312-cp312"]
+        image: ["manylinux_2_28_x86_64"]
+
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: topologytoolkit-${{ matrix.image }}-${{ matrix.python }}
+
+      - name: Register Python
+        run: |
+          echo "/opt/python/${{ matrix.python }}/bin" >> "$GITHUB_PATH"
+
+      - name: Install and test wheel
+        run: |
+          python -m venv /test
+          source /test/bin/activate
+
+          pip install -U pip
+          pip install ./*.whl
+
+          python - <<'PY'
+          import vtk
+          import topologytoolkit
+          from topologytoolkit.ttkScalarFieldCriticalPoints import ttkScalarFieldCriticalPoints
+
+          print("VTK:", vtk.vtkVersion.GetVTKVersion())
+          print("TTK:", topologytoolkit)
+
+          src = vtk.vtkRTAnalyticSource()
+          src.SetWholeExtent(0, 30, 0, 30, 0, 30)
+          src.Update()
+
+          f = ttkScalarFieldCriticalPoints()
+          f.SetInputConnection(src.GetOutputPort())
+          f.SetInputArrayToProcess("RTData",0)
+          f.Update()
+
+          out = f.GetOutput()
+          print("Critical points:", out.GetNumberOfPoints())
+          print("OK")
+          PY
+
+  publish:
+    needs: test
+    if: ${{ inputs.dry_publish == false }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: topologytoolkit-*
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TWINE_PYPI_PWD }}
